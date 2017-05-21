@@ -64,10 +64,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             new_theta = particles[i].theta;
         } else {
             new_x = particles[i].x + (current_velocity_meas / current_yaw_rate_meas) *
-                                             (sin(particles[i].theta + current_yaw_rate_meas * delta_t) - sin(particles[i].theta) );
+                                     (sin(particles[i].theta + current_yaw_rate_meas * delta_t) -
+                                      sin(particles[i].theta));
 
             new_y = particles[i].y + (current_velocity_meas / current_yaw_rate_meas) *
-                                             (cos(particles[i].theta) - cos(particles[i].theta + current_yaw_rate_meas * delta_t) );
+                                     (cos(particles[i].theta) -
+                                      cos(particles[i].theta + current_yaw_rate_meas * delta_t));
 
             new_theta = particles[i].theta + current_yaw_rate_meas * delta_t;
 
@@ -88,6 +90,19 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     // NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
     //   implement this method and use it as a helper during the updateWeights phase.
 
+    for (auto &obsv : observations) {
+        double closest_lm_d = -1.0;
+        int closest_lm_id = -1;
+        for (auto &lm : predicted) {
+            double cal_d = dist(lm.x, lm.y, obsv.x, obsv.y);
+            if (closest_lm_d > cal_d) {
+                closest_lm_d = cal_d;
+                closest_lm_id = lm.id;
+            }
+        }
+
+        obsv.id = closest_lm_id;
+    }
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
@@ -103,6 +118,79 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     //   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account
     //   for the fact that the map's y-axis actually points downwards.)
     //   http://planning.cs.uiuc.edu/node99.html
+
+    vector<LandmarkObs> transformed_observations;
+    vector<LandmarkObs> predicted;
+
+    for (auto &p: particles) {
+        // Step1 : Transform observations to Global Map Coordinate system wrt to a predicted vehicle particle.
+        // https://discussions.udacity.com/t/coordinate-transform/241288/4
+
+        transformed_observations.clear();
+        predicted.clear();
+
+        for (int i = 0; i < observations.size(); i++) {
+            LandmarkObs tmp;
+            tmp.x = p.x + observations[i].x * cos(p.theta) - observations[i].y * sin(p.theta);
+            tmp.y = p.y + observations[i].x * sin(p.theta) + observations[i].y * cos(p.theta);
+            tmp.id = -1;
+            transformed_observations.push_back(tmp);
+        }
+
+        // Step 2: Construct predicted vector. Remove landmarks which are not in sensor range.
+        // https://discussions.udacity.com/t/why-does-updateweights-function-needs-sensor-range/248695
+
+        double xmin_range = p.x - sensor_range;
+        double xmax_range = p.x + sensor_range;
+        double ymin_range = p.y - sensor_range;
+        double ymax_range = p.y + sensor_range;
+
+        for (auto &lm: map_landmarks.landmark_list) {
+            if (xmin_range < lm.x_f && lm.x_f < xmax_range &&
+                ymin_range < lm.y_f && lm.y_f < ymax_range) {
+                LandmarkObs tmp_lm;
+                tmp_lm.x = lm.x_f;
+                tmp_lm.y = lm.y_f;
+                tmp_lm.id = lm.id_i;
+                predicted.push_back(tmp_lm);
+            }
+        }
+
+        // Step 3: Do dataAssociation and map each TOBS to a landmark id.
+
+        dataAssociation(predicted, transformed_observations);
+
+        // Step 4: update the weights of all the particles using multivariate gaussian distribution.
+
+        double new_particle_weight = 1.0;
+
+        for (auto &obsv: transformed_observations) {
+            double mvg_prob = 0;
+
+            double tmp_x = obsv.x;
+            double tmp_y = obsv.y;
+
+            Map::single_landmark_s cl_lm = map_landmarks.landmark_list[obsv.id - 1];
+
+            double mu_x = cl_lm.x_f;
+            double mu_y = cl_lm.y_f;
+
+            double sigma_x = std_landmark[0];
+            double sigma_y = std_landmark[1];
+
+            double p1 = 1 / (2.0 * M_PI * sigma_x * sigma_y);
+            double p2x = ((tmp_x - mu_x) * (tmp_x - mu_x)) / (2.0 * sigma_x * sigma_x);
+            double p2y = ((tmp_y - mu_y) * (tmp_y - tmp_y)) / (2.0 * sigma_y * sigma_y);
+            double p2 = exp(-1 * (p2x + p2y));
+            mvg_prob = p1 * p2;
+
+            new_particle_weight *= mvg_prob;
+        }
+
+        p.weight = new_particle_weight;
+
+    }
+
 }
 
 void ParticleFilter::resample() {
