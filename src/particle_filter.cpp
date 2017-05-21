@@ -58,7 +58,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
     for (int i = 0; i < this->num_particles; i++) {
         // use motion model equations for prediction.
-        if (yaw_rate < 0.001) {
+        if (fabs(yaw_rate) < 0.001) {
             new_x = particles[i].x + current_velocity_meas * delta_t * cos(particles[i].theta);
             new_y = particles[i].y + current_velocity_meas * delta_t * sin(particles[i].theta);
             new_theta = particles[i].theta;
@@ -91,7 +91,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     //   implement this method and use it as a helper during the updateWeights phase.
 
     for (auto &obsv : observations) {
-        double closest_lm_d = -1.0;
+        double closest_lm_d = numeric_limits<double>::max();
         int closest_lm_id = -1;
         for (auto &lm : predicted) {
             double cal_d = dist(lm.x, lm.y, obsv.x, obsv.y);
@@ -121,6 +121,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     vector<LandmarkObs> transformed_observations;
     vector<LandmarkObs> predicted;
+    weights.clear();
 
     for (auto &p: particles) {
         // Step1 : Transform observations to Global Map Coordinate system wrt to a predicted vehicle particle.
@@ -180,7 +181,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
             double p1 = 1 / (2.0 * M_PI * sigma_x * sigma_y);
             double p2x = ((tmp_x - mu_x) * (tmp_x - mu_x)) / (2.0 * sigma_x * sigma_x);
-            double p2y = ((tmp_y - mu_y) * (tmp_y - tmp_y)) / (2.0 * sigma_y * sigma_y);
+            double p2y = ((tmp_y - mu_y) * (tmp_y - mu_y)) / (2.0 * sigma_y * sigma_y);
             double p2 = exp(-1 * (p2x + p2y));
             mvg_prob = p1 * p2;
 
@@ -188,9 +189,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
 
         p.weight = new_particle_weight;
-        weights[p.id] = new_particle_weight;
+        weights.push_back(new_particle_weight);
     }
-
 }
 
 void ParticleFilter::resample() {
@@ -200,6 +200,7 @@ void ParticleFilter::resample() {
 
     // discrete_distribution function automatically normalizes the weights. So no need to normalize the weights
     // separately.
+
 
 }
 
