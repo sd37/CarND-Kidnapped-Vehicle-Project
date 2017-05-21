@@ -58,6 +58,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     for (int i = 0; i < this->num_particles; i++) {
         default_random_engine gen;
 
+
+        // use motion model equations for prediction.
         if (yaw_rate < 0.001) {
             new_x = particles[i].x + current_velocity_meas * delta_t * cos(particles[i].theta);
             new_y = particles[i].y + current_velocity_meas * delta_t * sin(particles[i].theta);
