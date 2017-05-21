@@ -188,7 +188,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
 
         p.weight = new_particle_weight;
-
+        weights[p.id] = new_particle_weight;
     }
 
 }
@@ -197,6 +197,9 @@ void ParticleFilter::resample() {
     // TODO: Resample particles with replacement with probability proportional to their weight.
     // NOTE: You may find std::discrete_distribution helpful here.
     //   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+
+    // discrete_distribution function automatically normalizes the weights. So no need to normalize the weights
+    // separately.
 
 }
 
