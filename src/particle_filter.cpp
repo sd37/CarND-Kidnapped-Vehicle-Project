@@ -198,8 +198,8 @@ void ParticleFilter::resample() {
     // NOTE: You may find std::discrete_distribution helpful here.
     //   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-    // discrete_distribution function automatically normalizes the weights. So no need to normalize the weights
-    // separately.
+    // discrete_distribution function automatically normalizes the weights for making selection.
+    // So no need to normalize the weights separately.
 
     vector<Particle> sampled_particles;
 
