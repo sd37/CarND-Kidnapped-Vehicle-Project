@@ -201,7 +201,20 @@ void ParticleFilter::resample() {
     // discrete_distribution function automatically normalizes the weights. So no need to normalize the weights
     // separately.
 
+    vector<Particle> sampled_particles;
 
+    random_device rd;
+    mt19937 gen(rd());
+
+    discrete_distribution<> dist(weights.begin(), weights.end());
+
+    for (int i = 0; i < weights.size(); ++i) {
+        int pick = dist(gen);
+        Particle p = particles[pick];
+        sampled_particles.push_back(p);
+    }
+
+    particles = sampled_particles;
 }
 
 void ParticleFilter::write(std::string filename) {
