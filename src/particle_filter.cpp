@@ -25,7 +25,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     normal_distribution<double> dist_y(y, std[1]);
     normal_distribution<double> dist_theta(theta, std[2]);
 
-    this->num_particles = 5;
+    this->num_particles = 1000;
 
     for (int i = 0; i < this->num_particles; i++) {
         Particle p;
